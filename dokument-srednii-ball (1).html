@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тебе эмоция</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #2b0b14; color: #fff; display: flex; justify-content: center; min-height: 100vh; overflow-x: hidden; }
+    .mobile-container { width: 100%; max-width: 420px; min-height: 100vh; padding: 24px 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+    .screen { display: none; width: 100%; flex-direction: column; align-items: center; text-align: center; animation: fadeIn 0.4s ease; }
+    .screen.active { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    h1, h2 { font-size: 24px; font-weight: 500; margin-bottom: 8px; }
+    p.subtitle { font-style: italic; opacity: 0.7; font-size: 14px; margin-bottom: 28px; }
+
+    /* Поля ввода и кнопки */
+    .input-box { width: 100%; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 25px; padding: 14px 20px; color: #fff; font-size: 16px; outline: none; text-align: center; margin-bottom: 14px; }
+    .btn { width: 100%; background: #d33c5e; color: #fff; border: none; border-radius: 25px; padding: 14px; font-size: 16px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+    .btn:active { transform: scale(0.98); opacity: 0.9; }
+
+    /* Конверт и письмо */
+    .envelope-box { width: 100%; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+    .envelope { width: 220px; height: 140px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-bottom: 16px; }
+    .seal { width: 44px; height: 44px; border-radius: 50%; background: #c2294c; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+    .letter { background: #fff7f2; color: #2b0b14; border-radius: 16px; padding: 24px 20px; text-align: left; width: 100%; max-height: 80vh; overflow-y: auto; }
+    .letter p { font-size: 15px; line-height: 1.5; margin-bottom: 14px; }
+    .letter-photo { width: 100%; border-radius: 12px; margin: 12px 0 18px; object-fit: cover; max-height: 300px; }
+
+    /* Карточки выбора */
+    .option-card { width: 100%; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 18px; padding: 16px; margin-bottom: 12px; text-align: left; cursor: pointer; }
+    .option-card.selected { border-color: #ff6584; background: rgba(255, 101, 132, 0.2); }
+    .option-card h3 { font-size: 16px; margin-bottom: 4px; }
+    .option-card span { font-size: 13px; opacity: 0.7; }
+
+    /* Финальный экран с сердечками / пикселями */
+    .tap-area { width: 280px; height: 280px; border-radius: 16px; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; user-select: none; margin-bottom: 20px; overflow: hidden; }
+    .photo-reveal { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.2s linear; }
+    .tap-hint { position: relative; z-index: 2; font-size: 14px; opacity: 0.8; }
+    .summary-card { background: rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 14px; width: 100%; font-size: 14px; }
+
+    /* Финальный экран: прогресс "Вместе" */
+    .pg-wrap { width: 100%; }
+    .pg-track-area { position: relative; width: 100%; padding-top: 52px; }
+    .pg-track { width: 100%; height: 14px; background: rgba(255,255,255,0.18); border-radius: 10px; overflow: hidden; }
+    .pg-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #e8457c, #ff6584); border-radius: 10px; }
+    .pg-badge { position: absolute; top: 0; left: 0; transform: translateX(-50%); background: #e8457c; color: #fff; font-weight: 700; font-size: 15px; padding: 8px 14px; border-radius: 12px; white-space: nowrap; }
+    .pg-badge::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; background: #e8457c; transform: translateX(-50%) rotate(45deg); }
+    .pg-labels { display: flex; justify-content: space-between; margin-top: 12px; font-size: 14px; text-align: left; }
+    .pg-labels .right { text-align: right; color: #ff6584; }
+    .pg-labels small { display: block; opacity: 0.75; font-size: 12px; }
+    .pg-left { margin-top: 18px; color: #ff6584; font-size: 15px; opacity: 0; transition: opacity 0.8s ease 2.2s; }
+    .pg-together { margin-top: 36px; opacity: 0; transform: translateY(10px); transition: all 0.8s ease 1s; }
+    .pg-together .t1 { font-size: 20px; opacity: 0.7; margin-bottom: 8px; }
+    .pg-together .t2 { font-size: 26px; font-weight: 700; }
+    #step4.play .pg-left, #step4.play .pg-together { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+<div class="mobile-container">
+
+  <!-- 0. Проверка имени -->
+  <section id="step0" class="screen active">
+    <h1>Тебя зовут Анастасия?</h1>
+    <p class="subtitle">выбери ответ</p>
+    <button class="btn" onclick="goTo('step1')">Да</button>
+    <button class="btn" style="margin-top:12px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);" onclick="goTo('stepNo')">Нет</button>
+  </section>
+
+  <!-- Экран для ответа "Нет" -->
+  <section id="stepNo" class="screen">
+    <h1>Иди отсюда, нехуй тебе ловить тут.</h1>
+  </section>
+
+  <!-- 1. Экран с паролем -->
+  <section id="step1" class="screen">
+    <h1>Я тебе не верю, давай мы это проверим, тебе необходимо назвать пароль </h1>
+    <p class="subtitle"> паролем являеться место где мы встретились впервые</p>
+    <input type="text" id="secretWord" class="input-box" placeholder="слово">
+    <button class="btn" onclick="checkWord()">Открыть</button>
+  </section>
+
+  <!-- 2. Конверт -->
+  <section id="step2" class="screen">
+    <h2>Любимая, я тебе написал письмо</h2>
+    <div class="envelope-box" onclick="openLetter()">
+      <div class="envelope"><div class="seal">💌</div></div>
+      <p class="subtitle">открой его</p>
+    </div>
+  </section>
+
+  <!-- 3. Письмо -->
+  <section id="step3" class="screen">
+    <div class="letter">
+      <p style="font-weight:600;">Это письмо самой красивой девушке</p>
+      <p>Я просто целый день чувствую не полноценность, ну как будто нету чего-то, а потом про тебя вспомню и понятно понятно становиться(, я вообще тебя очень очень сильно, у меня когда такое на троение я прям чувствую что для меня ты правда вторая половина меня и как будто ищю и жду себя, а на сам деле моя вторая половинка работает с детками, ну я стараюсь себя настроить работой вот по этому щас буду пить кофе и решать пдд, да, по этому я хочу сказать тебе что чувствую что ты моя вторая половинка, и понимаешь что-то мы убрали в отношениях, ну сама знаешь что пропала, но я хочу сказать что наши отношения сейчас меня устаивают, это самое главное что я чувствую что ты мне родной человек, чувствую твою поддержку, чувствую как ты торопишься ко мне, А ЕЩЁ ЧУВСТВУЮ КАК ОБИЖАЕШЬ МЕНЯ, шучу и я тебя обижаю, я хочу сказать что с того дня как я тебе сделал предложение я ни разу не пожалел что сделал тебе предложение, по сути это ничего в нас не поменяло, но если так подумать, это новый шаг к взрослой жизни, а взрослую жизнь мы сейчас строим, это как домик блин, ну не будем мы радоватьчя на стройке в двоем😅😅😅😅😅, нам надл просто потерпеть и дальше стараться строить эти отношения, ну да можно купить отношения как дом, но когда ты вложил все в отношения и думаешь ЧТО Я ЕЩЁ НЕ ОТДАЛ, вот что по истине сделвет отношения вечными. И хочу тебе сказать еще раз, обобшить, что ты вначале не вошла в критерии идеала моего, но сейчас я пониааю что не мог просто представить реально идеальную себе девушку и хочу сказать что каждый день я выбираю быть с тобой( это не отдолжение, это просто ещё раз я говорю что вот то что поют, пишут, слышат, снимают в песнях, стихах, радио, фильмах я ощющаю свои чувства вот как везде и показывают эту любовь) 
+Все пора кофе пить. Все давай пока. 
+Люблю тебя очень сильно🥹</p>
+
+<p>P.S. любимый</p> 
+      
+      <!-- Замените ссылку на ваше фото -->
+      <img src="c:\Users\Admin\Downloads\photo копия 3.jpg" alt="Фото">
+      <button class="btn" onclick="goTo('step4')">Дальше</button>
+    </div>
+  </section>
+  <!-- 4. Финал: Вместе -->
+  <section id="step4" class="screen">
+    <div class="pg-wrap">
+      <div class="pg-track-area">
+        <div class="pg-badge" id="pgBadge">0%</div>
+        <div class="pg-track"><div class="pg-fill" id="pgFill"></div></div>
+      </div>
+      <div class="pg-labels">
+        <div>8 декабря 2024</div>
+        <div class="right">27 июня 2027<small>выпуск</small></div>
+      </div>
+      <div class="pg-left" id="pgLeft"></div>
+      <div class="pg-together">
+        <div class="t1">Вместе</div>
+        <div class="t2" id="pgTogether"></div>
+      </div>
+    </div>
+  </section>
+  <!-- Ниже: недостающая часть (в загруженном файле обрыв после step3) -->
+</div>
+
+<script>
+  const SECRET_WORD = ""; // впишите слово; пусто = принимается любое непустое
+  var goTo = function (id) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    const t = document.getElementById(id);
+    if (t) t.classList.add('active');
+  };
+  function checkWord() {
+    const v = document.getElementById('secretWord').value.trim().toLowerCase();
+    if (SECRET_WORD ? v === SECRET_WORD.toLowerCase() : v !== '') goTo('step2');
+    else document.getElementById('secretWord').style.borderColor = '#ff6584';
+  }
+  function openLetter() { goTo('step3'); }
+
+  const START = new Date(2024, 11, 8), END = new Date(2027, 5, 27);
+  function plural(n, a, b, c) { n = Math.abs(n) % 100; const m = n % 10; if (n > 10 && n < 20) return c; if (m > 1 && m < 5) return b; if (m === 1) return a; return c; }
+  function together(now) {
+    let y = now.getFullYear() - START.getFullYear(), m = now.getMonth() - START.getMonth(), d = now.getDate() - START.getDate();
+    if (d < 0) { m--; d += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
+    if (m < 0) { y--; m += 12; }
+    const parts = [];
+    if (y) parts.push(y + ' ' + plural(y, 'год', 'года', 'лет'));
+    if (m) parts.push(m + ' ' + plural(m, 'месяц', 'месяца', 'месяцев'));
+    parts.push(d + ' ' + plural(d, 'день', 'дня', 'дней'));
+    return parts.join(' ');
+  }
+  function playFinal() {
+    const now = new Date();
+    let pct = (now - START) / (END - START) * 100;
+    pct = Math.max(0, Math.min(100, pct));
+    const fill = document.getElementById('pgFill'), badge = document.getElementById('pgBadge');
+    document.getElementById('pgTogether').textContent = together(now);
+    document.getElementById('pgLeft').textContent = 'Осталось ' + (100 - pct).toFixed(1).replace('.', ',') + '%';
+    const dur = 2200, t0 = performance.now();
+    function frame(t) {
+      const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3), cur = pct * e;
+      fill.style.width = cur + '%';
+      badge.style.left = cur + '%';
+      badge.textContent = cur.toFixed(1).replace('.', ',') + '%';
+      if (k < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    setTimeout(() => document.getElementById('step4').classList.add('play'), 50);
+  }
+  const _goTo = goTo;
+  goTo = function (id) { _goTo(id); if (id === 'step4') playFinal(); };
+</script>
+</body>
+</html>
